@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using MongoDB.Driver;
-using MongoDB.Driver.Builders;
+using MongoDB.Bson;
 
 namespace Rebus.MongoDb
 {
@@ -13,7 +13,7 @@ namespace Rebus.MongoDb
     public class MongoDbSubscriptionStorage : IStoreSubscriptions
     {
         readonly string collectionName;
-        readonly MongoDatabase database;
+        readonly IMongoDatabase database;
 
         /// <summary>
         /// Constructs the storage to persist subscriptions in the given collection, in the database specified by the connection string.
@@ -29,15 +29,12 @@ namespace Rebus.MongoDb
         /// </summary>
         public void Store(Type eventType, string subscriberInputQueue)
         {
-            var collection = database.GetCollection(collectionName);
+            var collection = database.GetCollection<BsonDocument>(collectionName);
 
-            var criteria = Query.EQ("_id", eventType.FullName);
-            var update = Update.AddToSet("endpoints", subscriberInputQueue);
+            var criteria = Builders<BsonDocument>.Filter.Eq("_id", eventType.FullName);
+            var update = Builders<BsonDocument>.Update.AddToSet("endpoints", subscriberInputQueue);
 
-            var safeModeResult = collection.Update(criteria, update, UpdateFlags.Upsert, WriteConcern.Acknowledged);
-
-            EnsureResultIsGood(safeModeResult, "Adding {0} to {1} where _id is {2}",
-                               subscriberInputQueue, collectionName, eventType.FullName);
+            var safeModeResult = collection.UpdateOne(criteria, update, new UpdateOptions() { IsUpsert = true });
         }
 
         /// <summary>
@@ -45,15 +42,12 @@ namespace Rebus.MongoDb
         /// </summary>
         public void Remove(Type eventType, string subscriberInputQueue)
         {
-            var collection = database.GetCollection(collectionName);
+            var collection = database.GetCollection<BsonDocument>(collectionName);
 
-            var criteria = Query.EQ("_id", eventType.FullName);
-            var update = Update.Pull("endpoints", subscriberInputQueue);
+            var criteria = Builders<BsonDocument>.Filter.Eq("_id", eventType.FullName);
+            var update = Builders<BsonDocument>.Update.Pull("endpoints", subscriberInputQueue);
 
-            var safeModeResult = collection.Update(criteria, update, UpdateFlags.Upsert, WriteConcern.Acknowledged);
-
-            EnsureResultIsGood(safeModeResult, "Removing {0} from {1} where _id is {2}",
-                               subscriberInputQueue, collectionName, eventType.FullName);
+			var safeModeResult = collection.UpdateOne(criteria, update, new UpdateOptions() { IsUpsert = true });
         }
 
         /// <summary>
@@ -61,9 +55,9 @@ namespace Rebus.MongoDb
         /// </summary>
         public string[] GetSubscribers(Type eventType)
         {
-            var collection = database.GetCollection(collectionName);
+            var collection = database.GetCollection<BsonDocument>(collectionName);
 
-            var doc = collection.FindOne(Query.EQ("_id", eventType.FullName));
+            var doc = collection.Find(Builders<BsonDocument>.Filter.Eq("_id", eventType.FullName)).SingleOrDefault();
             if (doc == null) return new string[0];
 
             var bsonDocument = doc.AsBsonDocument;
@@ -71,17 +65,6 @@ namespace Rebus.MongoDb
 
             var endpoints = bsonDocument["endpoints"].AsBsonArray;
             return endpoints.Values.Select(v => v.ToString()).ToArray();
-        }
-
-        void EnsureResultIsGood(WriteConcernResult writeConcernResult, string message, params object[] objs)
-        {
-            if (!writeConcernResult.Ok)
-            {
-                throw new ApplicationException(
-                    string.Format("The following operation didn't suceed: {0} - the result was: {1}",
-                                  string.Format(message, objs),
-                                  writeConcernResult.ErrorMessage));
-            }
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Rebus.MongoDb
 {
     class MongoHelper
     {
-        public static MongoDatabase GetDatabase(string connectionString)
+        public static IMongoDatabase GetDatabase(string connectionString)
         {
             var mongoUrl = new MongoUrl(connectionString);
             var databaseName = mongoUrl.DatabaseName;
@@ -18,8 +18,7 @@ namespace Rebus.MongoDb
 
             var client = new MongoClient(mongoUrl);
 
-            return client.GetServer()
-                         .GetDatabase(databaseName);
+            return client.GetDatabase(databaseName);
         }
     }
 }
