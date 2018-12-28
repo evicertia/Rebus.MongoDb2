@@ -7,7 +7,8 @@ namespace Rebus.Tests.Persistence
 {
     public abstract class MongoDbFixtureBase
     {
-        MongoDatabase db;
+        IMongoDatabase db;
+		IMongoClient client;
 
         static MongoDbFixtureBase()
         {
@@ -25,9 +26,9 @@ namespace Rebus.Tests.Persistence
             TimeMachine.Reset();
 
             db = MongoHelper.GetDatabase(ConnectionStrings.MongoDb);
-            db.Drop();
+			db.DropDatabase(ConnectionStrings.MongoDb);
 
-            DoSetUp();
+			DoSetUp();
         }
 
         protected virtual void DoSetUp()
@@ -51,10 +52,10 @@ namespace Rebus.Tests.Persistence
 
         protected IEnumerable<string> GetCollectionNames()
         {
-            return db.GetCollectionNames();
+            return db.ListCollectionNames().ToEnumerable();
         }
 
-        protected MongoCollection<T> Collection<T>(string collectionName)
+        protected IMongoCollection<T> Collection<T>(string collectionName)
         {
             return db.GetCollection<T>(collectionName);
         }

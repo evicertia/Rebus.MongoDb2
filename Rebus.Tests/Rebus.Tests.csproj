@@ -55,6 +55,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Castle.Windsor.3.2.0\lib\net45\Castle.Windsor.dll</HintPath>
     </Reference>
+    <Reference Include="DnsClient, Version=1.0.7.0, Culture=neutral, PublicKeyToken=4574bb5573c51424, processorArchitecture=MSIL">
+      <HintPath>..\packages\DnsClient.1.0.7\lib\net45\DnsClient.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="DryIoc, Version=2.0.0.181, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\DryIoc.dll.2.0.0-preview181\lib\net45\DryIoc.dll</HintPath>
@@ -75,36 +79,17 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Unity.2.1.505.2\lib\NET35\Microsoft.Practices.Unity.Configuration.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.ServiceBus, Version=2.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\WindowsAzure.ServiceBus.2.5.4\lib\net40-full\Microsoft.ServiceBus.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Configuration">
-      <HintPath>..\packages\Microsoft.WindowsAzure.ConfigurationManager.2.0.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
+    <Reference Include="MongoDB.Bson, Version=2.7.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MongoDB.Bson.2.7.2\lib\net45\MongoDB.Bson.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.WindowsAzure.StorageClient, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\WindowsAzure.Storage.1.7.0.0\lib\net35-full\Microsoft.WindowsAzure.StorageClient.dll</HintPath>
-    </Reference>
-    <Reference Include="MongoDB.Bson, Version=1.10.1.73, Culture=neutral, PublicKeyToken=f686731cfb9cc103, processorArchitecture=MSIL">
-      <HintPath>..\packages\mongocsharpdriver.1.10.1\lib\net35\MongoDB.Bson.dll</HintPath>
+    <Reference Include="MongoDB.Driver, Version=2.7.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MongoDB.Driver.2.7.2\lib\net45\MongoDB.Driver.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MongoDB.Driver, Version=1.10.1.73, Culture=neutral, PublicKeyToken=f686731cfb9cc103, processorArchitecture=MSIL">
-      <HintPath>..\packages\mongocsharpdriver.1.10.1\lib\net35\MongoDB.Driver.dll</HintPath>
+    <Reference Include="MongoDB.Driver.Core, Version=2.7.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MongoDB.Driver.Core.2.7.2\lib\net45\MongoDB.Driver.Core.dll</HintPath>
       <Private>True</Private>
-    </Reference>
-    <Reference Include="Mono.Security, Version=4.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Npgsql.2.1.3\lib\net45\Mono.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="Ninject">
-      <HintPath>..\packages\Ninject.3.0.1.10\lib\net40\Ninject.dll</HintPath>
-    </Reference>
-    <Reference Include="Npgsql, Version=2.1.3.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Npgsql.2.1.3\lib\net45\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework, Version=3.11.0.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.3.11.0\lib\net45\nunit.framework.dll</HintPath>
@@ -113,22 +98,6 @@
     <Reference Include="RabbitMQ.Client, Version=3.4.0.0, Culture=neutral, PublicKeyToken=89e7d7c5feba84ce, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\RabbitMQ.Client.3.4.0\lib\net35\RabbitMQ.Client.dll</HintPath>
-    </Reference>
-    <Reference Include="Raven.Abstractions, Version=2.0.3.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\RavenDB.Client.2.0.2370\lib\net40\Raven.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Raven.Client.Embedded, Version=2.0.3.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\RavenDB.Embedded.2.0.2370\lib\net40\Raven.Client.Embedded.dll</HintPath>
-    </Reference>
-    <Reference Include="Raven.Client.Lightweight, Version=2.0.3.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\RavenDB.Client.2.0.2370\lib\net40\Raven.Client.Lightweight.dll</HintPath>
-    </Reference>
-    <Reference Include="Raven.Database, Version=2.0.3.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\RavenDB.Database.2.0.2370\lib\net40\Raven.Database.dll</HintPath>
     </Reference>
     <Reference Include="Rebus, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Rebus.0.84.0\lib\NET45\Rebus.dll</HintPath>
@@ -174,13 +143,20 @@
       <HintPath>..\packages\structuremap.3.0.3.116\lib\net40\StructureMap.Net4.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.3.0\lib\netstandard1.1\System.Buffers.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.Install" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Services.Client" />
     <Reference Include="System.Messaging" />
-    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.InteropServices.RuntimeInformation.4.0.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
@@ -269,89 +245,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rebus.Async\Rebus.Async.csproj">
-      <Project>{C1329E61-51E1-4724-A020-4D515FEB78A4}</Project>
-      <Name>Rebus.Async</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Autofac\Rebus.Autofac.csproj">
-      <Project>{539812E2-0F65-49ED-8F26-1736CF6CBFDA}</Project>
-      <Name>Rebus.Autofac</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj">
-      <Project>{761d59d5-5073-4af0-afdd-1d255f1ef594}</Project>
-      <Name>Rebus.AzureServiceBus</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Azure\Rebus.Azure.csproj">
-      <Project>{A56BFC05-A8B5-4ABA-BA3F-90BD30C13E1A}</Project>
-      <Name>Rebus.Azure</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.DryIoc\Rebus.DryIoc.csproj">
-      <Project>{17EACCD3-62DA-4997-BA2F-FD7FEC497979}</Project>
-      <Name>Rebus.DryIoc</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Extensions\Rebus.Extensions.csproj">
-      <Project>{7551FD46-EAE0-4041-B747-80102FF625F8}</Project>
-      <Name>Rebus.Extensions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.HttpGateway\Rebus.HttpGateway.csproj">
-      <Project>{3E817332-6161-46A1-8597-0E54BAD23DE0}</Project>
-      <Name>Rebus.HttpGateway</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.IdempotentSagas\Rebus.IdempotentSagas.csproj">
-      <Project>{8e78c97b-4e87-419b-9f9a-4b7d25c0be3f}</Project>
-      <Name>Rebus.IdempotentSagas</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Log4net\Rebus.Log4Net.csproj">
-      <Project>{2AFAE434-5CD2-494E-8341-005CD637FE2D}</Project>
-      <Name>Rebus.Log4Net</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Rebus.MongoDb\Rebus.MongoDb.csproj">
       <Project>{81686CC0-5387-4990-AF61-00CDAA972B81}</Project>
       <Name>Rebus.MongoDb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.MsmqLoadBalancer\Rebus.MsmqLoadBalancer.csproj">
-      <Project>{C2359E91-35C1-4D48-B089-97EF739A08F5}</Project>
-      <Name>Rebus.MsmqLoadBalancer</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.NewtonsoftJson\Rebus.NewtonsoftJson.csproj">
-      <Project>{1E2F369E-D903-47FE-8E07-C3C9509F5EE5}</Project>
-      <Name>Rebus.NewtonsoftJson</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Ninject\Rebus.Ninject.csproj">
-      <Project>{9FDF3178-567A-4EF1-81C6-5FF42AE103DF}</Project>
-      <Name>Rebus.Ninject</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.NLog\Rebus.NLog.csproj">
-      <Project>{f439a82e-b375-4c38-877b-7ed7f49ac6c2}</Project>
-      <Name>Rebus.NLog</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.PostgreSql\Rebus.PostgreSql.csproj">
-      <Project>{BA89E035-AD58-42A9-AC55-443EAD2527CE}</Project>
-      <Name>Rebus.PostgreSql</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.RavenDb\Rebus.RavenDb.csproj">
-      <Project>{A56478ED-F8B1-4300-9C6C-87322E565252}</Project>
-      <Name>Rebus.RavenDb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Serilog\Rebus.Serilog.csproj">
-      <Project>{994133F4-799B-4878-8AE8-29F5D7E00B8D}</Project>
-      <Name>Rebus.Serilog</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.SimpleInjector\Rebus.SimpleInjector.csproj">
-      <Project>{44a9cdf9-3a76-4b4c-aa1d-a34ad7fc2bd5}</Project>
-      <Name>Rebus.SimpleInjector</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.StructureMap\Rebus.StructureMap.csproj">
-      <Project>{D5263804-AD2A-40E3-B656-5132255883A8}</Project>
-      <Name>Rebus.StructureMap</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Timeout\Rebus.Timeout.csproj">
-      <Project>{C60AE485-707F-4BA1-AB17-4FF6ED1FD1B8}</Project>
-      <Name>Rebus.Timeout</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Rebus.Unity\Rebus.Unity.csproj">
-      <Project>{93AEA3E2-F995-427A-BAF4-F2EBD271E818}</Project>
-      <Name>Rebus.Unity</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

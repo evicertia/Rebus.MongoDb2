@@ -42,11 +42,11 @@ namespace Rebus.MongoDb
         public void Add(Timeout.Timeout newTimeout)
         {
             var doc = new BsonDocument()
-                .Add(CorrIdProperty, newTimeout.CorrelationId)
+                .Add(CorrIdProperty, (BsonValue) newTimeout.CorrelationId ?? BsonNull.Value )
                 .Add(SagaIdProperty, newTimeout.SagaId)
                 .Add(TimeProperty, newTimeout.TimeToReturn)
-                .Add(DataProperty, newTimeout.CustomData)
-                .Add(ReplyToProperty, newTimeout.ReplyTo);
+                .Add(DataProperty, (BsonValue) newTimeout.CustomData ?? BsonNull.Value)
+                .Add(ReplyToProperty, (BsonValue) newTimeout.ReplyTo ?? BsonNull.Value);
 
             collection.InsertOne(doc);
         }
@@ -60,15 +60,15 @@ namespace Rebus.MongoDb
             var result = collection.Find(Builders<BsonDocument>.Filter.Lte(TimeProperty, RebusTimeMachine.Now()))
                                    .Sort(Builders<BsonDocument>.Sort.Ascending(TimeProperty));
 
-            return new DueTimeoutsResult(result
-				.Project(r => new DueMongoTimeout(r[ReplyToProperty].AsString,
-                    GetString(r, CorrIdProperty),
-                    r[TimeProperty].ToUniversalTime(),
-                    GetGuid(r, SagaIdProperty),
-                    GetString(r, DataProperty),
-                    collection,
-                    (ObjectId) r[IdProperty]))
-                .ToList());
+			return new DueTimeoutsResult(result.Project(r =>
+					new DueMongoTimeout(GetString(r, ReplyToProperty),
+						GetString(r, CorrIdProperty),
+						r[TimeProperty].ToUniversalTime(),
+						GetGuid(r, SagaIdProperty),
+						GetString(r, DataProperty),
+						collection,
+						(ObjectId) r[IdProperty])
+					).ToList());
         }
 
         static Guid GetGuid(BsonDocument doc, string propertyName)
@@ -78,7 +78,7 @@ namespace Rebus.MongoDb
 
         static string GetString(BsonDocument doc, string propertyName)
         {
-            return doc.Contains(propertyName) ? doc[propertyName].AsString : "";
+            return doc.Contains(propertyName) ? (doc[propertyName] != BsonNull.Value ? doc[propertyName].AsString : null) : "";
         }
 
         class DueMongoTimeout : DueTimeout
@@ -86,7 +86,7 @@ namespace Rebus.MongoDb
             readonly IMongoCollection<BsonDocument> collection;
             readonly ObjectId objectId;
 
-            public DueMongoTimeout(string replyTo, string correlationId, DateTime timeToReturn, Guid sagaId, string customData, IMongoCollection<BsonDocument> collection, ObjectId objectId) 
+            public DueMongoTimeout(string replyTo, string correlationId, DateTime timeToReturn, Guid sagaId, string customData, IMongoCollection<BsonDocument> collection, ObjectId objectId)
                 : base(replyTo, correlationId, timeToReturn, sagaId, customData)
             {
                 this.collection = collection;

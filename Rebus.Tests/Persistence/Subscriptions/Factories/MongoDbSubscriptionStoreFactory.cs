@@ -5,7 +5,7 @@ namespace Rebus.Tests.Persistence.Subscriptions.Factories
 {
     public class MongoDbSubscriptionStoreFactory : ISubscriptionStoreFactory
     {
-        MongoDatabase db;
+        IMongoDatabase db;
 
         public IStoreSubscriptions CreateStore()
         {

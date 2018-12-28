@@ -10,6 +10,7 @@ using Rebus.Tests.Persistence;
 using Rebus.Transports.Msmq;
 using Shouldly;
 using System.Linq;
+using MongoDB.Driver;
 
 namespace Rebus.Tests.Integration
 {
@@ -25,10 +26,10 @@ namespace Rebus.Tests.Integration
 
             var msmqMessageQueue = new MsmqMessageQueue("test.dispatcher.and.mongo");
             handlers = new HandlerActivatorForTesting().UseHandler(new MySaga());
-            
+
             var persister = new MongoDbSagaPersister(ConnectionString)
                 .SetCollectionName<MySagaData>("sagas");
-            
+
             bus = new RebusBus(handlers, msmqMessageQueue,
                                msmqMessageQueue, new InMemorySubscriptionStorage(),
                                persister,
@@ -60,11 +61,11 @@ namespace Rebus.Tests.Integration
             Thread.Sleep(5.Seconds());
 
             var sagas = Collection<MySagaData>("sagas");
-            var allSagas = sagas.FindAll();
+            var allSagas = sagas.Find(Builders<MySagaData>.Filter.Empty);
 
-            allSagas.Count().ShouldBe(2);
-            var saga1 = allSagas.Single(s => s.NestedData.CorrelationId == id1);
-            var saga2 = allSagas.Single(s => s.NestedData.CorrelationId == id2);
+            allSagas.CountDocuments().ShouldBe(2);
+            var saga1 = sagas.Find(s => s.NestedData.CorrelationId == id1).Single();
+            var saga2 = sagas.Find(s => s.NestedData.CorrelationId == id2).Single();
             saga1.NestedData.Counter.ShouldBe(2);
             saga2.NestedData.Counter.ShouldBe(3);
         }
@@ -78,7 +79,7 @@ namespace Rebus.Tests.Integration
 
             public void Handle(HasGuid message)
             {
-                if (Data.NestedData == null) 
+                if (Data.NestedData == null)
                     Data.NestedData = new NestedData();
 
                 Data.NestedData.CorrelationId = message.Guid;

@@ -6,7 +6,7 @@ namespace Rebus.Tests.Persistence.Timeouts.Factories
 {
     public class MongoDbTimeoutStorageFactory : ITimeoutStorageFactory
     {
-        MongoDatabase db;
+        IMongoDatabase db;
 
         public IStoreTimeouts CreateStore()
         {

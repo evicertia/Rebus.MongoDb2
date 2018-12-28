@@ -30,7 +30,7 @@ namespace Rebus.MongoDb
 
             // try to use our own naming convention
             RevisionMemberName = NamingConvention.RevisionMemberName;
-            
+
             ConventionRegistry.Register("SagaDataConventionPack",
                                         NamingConvention,
                                         t => typeof (ISagaData).IsAssignableFrom(t));
@@ -172,22 +172,20 @@ namespace Rebus.MongoDb
             var revisionElementName = GetRevisionElementName(sagaData);
 
             var criteria = Builders<ISagaData>.Filter.And(Builders<ISagaData>.Filter.Eq(IdElementName, sagaData.Id),
-									 Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision));
+				Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision));
 
             sagaData.Revision++;
 
             try
             {
-                collection.ReplaceOne(criteria, sagaData);
+                var replaceResult = collection.ReplaceOne(criteria, sagaData);
 
-				//This is not needed now because when update fails, MongoDb C# driver automatically throws a MongoWriteException.
-#if false
-				EnsureResultIsGood(safeModeResult,
-                       "update saga data of type {0} with _id {1} and _rev {2}", 1,
+				EnsureResultIsGood(replaceResult,
+                       "update saga data of type {0} with _id {1} and _rev {2}", 1, sagaData,
                        sagaData.GetType(),
                        sagaData.Id,
                        sagaData.Revision);
-#endif
+
             }
             catch (MongoWriteException ex)
             {
@@ -213,16 +211,13 @@ namespace Rebus.MongoDb
 
             try
             {
-                collection.DeleteOne(query);
+                var deleteResult = collection.DeleteOne(query);
 
-				//This is not needed now because when delete fails, MongoDb C# driver automatically throws a MongoWriteException.
-#if false
-				EnsureResultIsGood(safeModeResult,
-                                   "delete saga data of type {0} with _id {1} and _rev {2}", 1,
+				EnsureResultIsGood(deleteResult,
+                                   "delete saga data of type {0} with _id {1} and _rev {2}", 1, sagaData,
                                    sagaData.GetType(),
                                    sagaData.Id,
                                    sagaData.Revision);
-#endif
             }
             catch (MongoWriteConcernException ex)
             {
@@ -241,11 +236,7 @@ namespace Rebus.MongoDb
         {
             var collection = database.GetCollection<T>(GetCollectionName(typeof(T)));
 
-            var bsonValue = fieldFromMessage != null
-                ? BsonValue.Create(fieldFromMessage)
-                : BsonNull.Value;
-
-            var query = Builders<T>.Filter.Eq(MapSagaDataPropertyPath(sagaDataPropertyPath, typeof (T)), bsonValue);
+			var query = Builders<T>.Filter.Eq(MapSagaDataPropertyPath(sagaDataPropertyPath, typeof (T)), fieldFromMessage);
 
             return collection.Find(query).SingleOrDefault();
         }
@@ -394,30 +385,28 @@ which will make the persister use the type of the saga to come up with collectio
             return NamingConvention.GetElementName(propertyInfo);
         }
 
-#if false
-		void EnsureResultIsGood(ReplaceOneResult writeConcernResult, string message, int expectedNumberOfAffectedDocuments, params object[] objs)
+		void EnsureResultIsGood(ReplaceOneResult replaceResult, string message, int expectedNumberOfAffectedDocuments, ISagaData sagaData, params object[] objs)
         {
-            if (writeConcernResult.ModifiedCount != expectedNumberOfAffectedDocuments)
+            if (replaceResult.ModifiedCount != expectedNumberOfAffectedDocuments)
             {
                 var exceptionMessage = string.Format("Tried to {0}, but documents affected != {1}.",
                                                      string.Format(message, objs),
                                                      expectedNumberOfAffectedDocuments);
 
-                throw new MongoWriteException(exceptionMessage, writeConcernResult);
+                throw new OptimisticLockingException(sagaData, new MongoException(exceptionMessage));
             }
         }
 
-		void EnsureResultIsGood(DeleteResult writeConcernResult, string message, int expectedNumberOfAffectedDocuments, params object[] objs)
+		void EnsureResultIsGood(DeleteResult deleteResult, string message, int expectedNumberOfAffectedDocuments, ISagaData sagaData, params object[] objs)
 		{
-			if (writeConcernResult.DeletedCount != expectedNumberOfAffectedDocuments)
+			if (deleteResult.DeletedCount != expectedNumberOfAffectedDocuments)
 			{
 				var exceptionMessage = string.Format("Tried to {0}, but documents affected != {1}.",
 													 string.Format(message, objs),
 													 expectedNumberOfAffectedDocuments);
 
-				throw new MongoWriteException(exceptionMessage, writeConcernResult);
+				throw new OptimisticLockingException(sagaData, new MongoException(exceptionMessage));
 			}
 		}
-#endif
 	}
 }
