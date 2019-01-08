@@ -5,34 +5,16 @@ using System.Messaging;
 using System.Text;
 using System.Threading;
 using NUnit.Framework;
-using RabbitMQ.Client;
 using Rebus.Bus;
 using Rebus.Transports.Msmq;
 using Shouldly;
 using System.Linq;
-using Castle.MicroKernel.Registration;
-using Castle.Windsor;
 
 namespace Rebus.Tests
 {
     [TestFixture]
     public class TestStuff
     {
-        [Test]
-        public void TestCastleWindsorFactoryMethodInjectionAndDisposal()
-        {
-            var container = new WindsorContainer()
-                .Register(
-                    Component.For<HasDependencyOnMessageContext>().LifestyleTransient(),
-
-                    Component.For<IMessageContext>()
-                        .UsingFactoryMethod(k => new FakeMessageContext())
-                        .LifestyleTransient()
-                );
-
-            container.Release(container.Resolve<HasDependencyOnMessageContext>());
-        }
-
         class FakeMessageContext : IMessageContext
         {
             public void Dispose()
@@ -92,7 +74,7 @@ namespace Rebus.Tests
         {
             public HasDependencyOnMessageContext(IMessageContext context)
             {
-                
+
             }
         }
 
