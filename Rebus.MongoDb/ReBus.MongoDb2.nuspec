@@ -2,7 +2,7 @@
 <package>
 	<metadata>
 		<id>Rebus.MongoDb2</id>
-		<version>$version$</version>
+		<version>0.0.0.0</version>
 		<authors>Evidencias Certificadas, S.L.</authors>
 		<owners>Evidencias Certificadas, S.L.</owners>
 		<projectUrl>https://github.com/evicertia/Rebus.MongoDb2</projectUrl>
