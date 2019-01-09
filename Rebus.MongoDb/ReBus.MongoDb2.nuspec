@@ -11,7 +11,13 @@
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>
 		<releaseNotes>See changes for this revision at: https://github.com/evicertia/Rebus.MongoDb2/commit/GIT_COMMIT </releaseNotes>
 		<description>MongoDB saga persister and subscription storage using mongodb csharp client v2+.</description>
-		<copyright>Copyright Evidencias Certificadas, S.L. 2010-2016</copyright>
+		<copyright>Copyright Evidencias Certificadas, S.L. 2010-2019</copyright>
+		<dependencies>
+			<dependency id="Rebus" version="0.84.0" />
+			<dependency id="MongoDB.Bson" version="2.7.2" />
+			<dependency id="MongoDB.Driver" version="2.7.2" />
+			<dependency id="MongoDB.Driver.Core" version="2.7.2" />
+		</dependencies>
 	</metadata>
 	<files>
 		<file src="bin\Release\Rebus.MongoDb.*" target="lib\NET45" />
