@@ -7,7 +7,7 @@ using MongoDB.Driver;
 
 using Rebus.Timeout;
 
-namespace Rebus.MongoDb
+namespace Rebus.MongoDb2
 {
     /// <summary>
     /// Implementation of <see cref="IStoreTimeouts"/> that stores timeouts in a MongoDB

@@ -1,6 +1,6 @@
 ﻿using Rebus.Configuration;
 
-namespace Rebus.MongoDb
+namespace Rebus.MongoDb2
 {
     /// <summary>
     /// Configuration extensions to allow for fluently configuring Rebus with MongoDB

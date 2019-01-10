@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using Rebus.MongoDb;
+using Rebus.MongoDb2;
 using Rebus.Timeout;
 
 namespace Rebus.Tests.Persistence.Timeouts.Factories

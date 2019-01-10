@@ -138,7 +138,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rebus.MongoDb\Rebus.MongoDb.csproj">
+    <ProjectReference Include="..\Rebus.MongoDb2\Rebus.MongoDb2.csproj">
       <Project>{81686CC0-5387-4990-AF61-00CDAA972B81}</Project>
       <Name>Rebus.MongoDb</Name>
     </ProjectReference>

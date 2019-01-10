@@ -10,7 +10,7 @@ using System.Linq;
 using Ponder;
 using Rebus.Logging;
 
-namespace Rebus.MongoDb
+namespace Rebus.MongoDb2
 {
     /// <summary>
     /// MongoDB implementation of Rebus' <see cref="IStoreSagaData"/>. Will store saga data as they are serialized by the

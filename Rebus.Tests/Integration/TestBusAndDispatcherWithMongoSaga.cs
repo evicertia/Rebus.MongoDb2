@@ -3,7 +3,7 @@ using System.Threading;
 using NUnit.Framework;
 using Rebus.Bus;
 using Rebus.Configuration;
-using Rebus.MongoDb;
+using Rebus.MongoDb2;
 using Rebus.Persistence.InMemory;
 using Rebus.Serialization.Json;
 using Rebus.Tests.Persistence;

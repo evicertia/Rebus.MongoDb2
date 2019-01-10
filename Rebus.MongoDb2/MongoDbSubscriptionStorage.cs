@@ -3,7 +3,7 @@ using System.Linq;
 using MongoDB.Driver;
 using MongoDB.Bson;
 
-namespace Rebus.MongoDb
+namespace Rebus.MongoDb2
 {
     /// <summary>
     /// MongoDB implementation of Rebus' <see cref="IStoreSubscriptions"/>. Will store subscriptions in one document per

@@ -1,6 +1,6 @@
 ﻿using System;
 using NUnit.Framework;
-using Rebus.MongoDb;
+using Rebus.MongoDb2;
 using Shouldly;
 
 namespace Rebus.Tests.Persistence.MongoDb

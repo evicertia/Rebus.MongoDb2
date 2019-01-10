@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using Rebus.MongoDb;
+using Rebus.MongoDb2;
 
 namespace Rebus.Tests.Persistence.Sagas.Factories
 {

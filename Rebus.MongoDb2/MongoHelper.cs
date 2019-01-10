@@ -1,7 +1,7 @@
 ﻿using System;
 using MongoDB.Driver;
 
-namespace Rebus.MongoDb
+namespace Rebus.MongoDb2
 {
     class MongoHelper
     {
