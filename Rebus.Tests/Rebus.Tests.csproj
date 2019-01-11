@@ -102,7 +102,6 @@
   <ItemGroup>
     <Compile Include="AppConfig.cs" />
     <Compile Include="DisposableTracker.cs" />
-    <Compile Include="Integration\TestBusAndDispatcherWithMongoSaga.cs" />
     <Compile Include="Persistence\MongoHelper.cs" />
     <Compile Include="TestExtensions.cs" />
     <Compile Include="TestHelpers.cs" />

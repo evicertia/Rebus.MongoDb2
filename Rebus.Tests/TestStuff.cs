@@ -177,18 +177,6 @@ namespace Rebus.Tests
         }
 
         [Test]
-        public void StatementOfFunctionality()
-        {
-            var messageQueue = GetOrCreate("test.headers");
-            messageQueue.Purge();
-
-            var tx = new MessageQueueTransaction();
-            tx.Begin();
-            messageQueue.Send("this is just some random message", "THIS IS THE LABEL", tx);
-            tx.Commit();
-        }
-
-        [Test]
         public void VerifyBehaviorOfModulo()
         {
             int numberOfProcessedMessages = int.MaxValue;
