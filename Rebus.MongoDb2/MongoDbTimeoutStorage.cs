@@ -4,7 +4,9 @@ using System.Collections.Generic;
 
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Clusters;
 
+using Rebus.Logging;
 using Rebus.Timeout;
 
 namespace Rebus.MongoDb2
@@ -20,7 +22,13 @@ namespace Rebus.MongoDb2
         const string SagaIdProperty = "saga_id";
         const string DataProperty = "data";
         const string IdProperty = "_id";
+        const string ProcessingProperty = "processing";
+
+        static ILog log;
+
         readonly IMongoCollection<BsonDocument> collection;
+        readonly IMongoClient client;
+        private Func<List<DueMongoTimeout>> DueMongoTimeouts;
 
         /// <summary>
         /// Constructs the timeout storage, connecting to the Mongo database pointed to by the given connection string,
@@ -30,6 +38,16 @@ namespace Rebus.MongoDb2
         {
             var database = MongoHelper.GetDatabase(connectionString);
             collection = database.GetCollection<BsonDocument>(collectionName);
+
+            client = database.Client;
+            var clusterType = client.Cluster.Description.Type;
+            var transactionsNotSupported = (clusterType == ClusterType.Standalone || clusterType == ClusterType.Unknown);
+            if (transactionsNotSupported)
+                DueMongoTimeouts = GetDueMongoTimeouts;
+            else
+                DueMongoTimeouts = GetDueMongoTimeoutsAsTransaction;
+
+            RebusLoggerFactory.Changed += f => log = f.GetCurrentClassLogger();
 
 			var indexBuilder = Builders<BsonDocument>.IndexKeys;
 			var indexModel = new CreateIndexModel<BsonDocument>(indexBuilder.Ascending(TimeProperty), new CreateIndexOptions() { Background = true, Unique = false });
@@ -46,9 +64,66 @@ namespace Rebus.MongoDb2
                 .Add(SagaIdProperty, newTimeout.SagaId)
                 .Add(TimeProperty, newTimeout.TimeToReturn)
                 .Add(DataProperty, (BsonValue) newTimeout.CustomData ?? BsonNull.Value)
-                .Add(ReplyToProperty, (BsonValue) newTimeout.ReplyTo ?? BsonNull.Value);
+                .Add(ReplyToProperty, (BsonValue) newTimeout.ReplyTo ?? BsonNull.Value)
+                .Add(ProcessingProperty, false);
 
             collection.InsertOne(doc);
+        }
+
+        private List<DueMongoTimeout> GetDueMongoTimeoutsAsTransaction()
+        {
+            List<DueMongoTimeout> dueMongoTimeouts = null;
+
+            using (var session = client.StartSession())
+            {
+                session.StartTransaction();
+                try
+                {
+                    var filter = Builders<BsonDocument>.Filter.Lte(TimeProperty, RebusTimeMachine.Now());
+                    filter = filter & Builders<BsonDocument>.Filter.Eq(ProcessingProperty, false);
+
+                    var result = collection.Find(session, filter).Sort(Builders<BsonDocument>.Sort.Ascending(TimeProperty));
+                    dueMongoTimeouts = result.Project(r =>
+                             new DueMongoTimeout(GetString(r, ReplyToProperty),
+                                 GetString(r, CorrIdProperty),
+                                 r[TimeProperty].ToUniversalTime(),
+                                 GetGuid(r, SagaIdProperty),
+                                 GetString(r, DataProperty),
+                                 collection,
+                                 (ObjectId)r[IdProperty])
+                            ).ToList();
+
+                    var update = new UpdateDefinitionBuilder<BsonDocument>().Set(ProcessingProperty, true);
+                    var updateOptions = new UpdateOptions() { IsUpsert = false };
+                    collection.UpdateMany(session, filter, update, updateOptions);
+
+                    session.CommitTransaction();
+                }
+                catch (Exception e)
+                {
+                    log.Error("Error processing group timeouts in transaction returning " + e.Message);
+                    dueMongoTimeouts = new List<DueMongoTimeout>();
+                    session.AbortTransaction();
+                }
+            }
+
+            return dueMongoTimeouts;
+        }
+
+        private List<DueMongoTimeout> GetDueMongoTimeouts()
+        {
+            var filter = Builders<BsonDocument>.Filter.Lte(TimeProperty, RebusTimeMachine.Now());
+            var result = collection.Find(filter).Sort(Builders<BsonDocument>.Sort.Ascending(TimeProperty));
+
+            return result.Project(r =>
+                    new DueMongoTimeout(GetString(r, ReplyToProperty),
+                        GetString(r, CorrIdProperty),
+                        r[TimeProperty].ToUniversalTime(),
+                        GetGuid(r, SagaIdProperty),
+                        GetString(r, DataProperty),
+                        collection,
+                        (ObjectId) r[IdProperty])
+                    ).ToList();
         }
 
         /// <summary>
@@ -57,18 +132,7 @@ namespace Rebus.MongoDb2
         /// </summary>
         public DueTimeoutsResult GetDueTimeouts()
         {
-            var result = collection.Find(Builders<BsonDocument>.Filter.Lte(TimeProperty, RebusTimeMachine.Now()))
-                                   .Sort(Builders<BsonDocument>.Sort.Ascending(TimeProperty));
-
-			return new DueTimeoutsResult(result.Project(r =>
-					new DueMongoTimeout(GetString(r, ReplyToProperty),
-						GetString(r, CorrIdProperty),
-						r[TimeProperty].ToUniversalTime(),
-						GetGuid(r, SagaIdProperty),
-						GetString(r, DataProperty),
-						collection,
-						(ObjectId) r[IdProperty])
-					).ToList());
+            return new DueTimeoutsResult(DueMongoTimeouts());
         }
 
         static Guid GetGuid(BsonDocument doc, string propertyName)
