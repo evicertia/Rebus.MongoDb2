@@ -96,18 +96,19 @@ namespace Rebus.MongoDb2
             {
                 var findOneAndUpdateOptions = new FindOneAndUpdateOptions<BsonDocument> { Sort = Builders<BsonDocument>.Sort.Ascending(TimeProperty).Ascending(DueLockProperty) };
                 var r = collection.FindOneAndUpdate(timeoutReadyToBeFiredFilter, Builders<BsonDocument>.Update.Set(DueLockProperty, dueLockShifted), findOneAndUpdateOptions);
-                if (r != null)
-                {
-                    var timeout = new DueMongoTimeout(GetString(r, ReplyToProperty),
-                        GetString(r, CorrIdProperty),
-                        r[TimeProperty].ToUniversalTime(),
-                        GetGuid(r, SagaIdProperty),
-                        GetString(r, DataProperty),
-                        collection,
-                        (ObjectId)r[IdProperty]);
 
-                    dueTimeouts.Add(timeout);
-                }
+                if (r == null)
+                    break;
+
+                var timeout = new DueMongoTimeout(GetString(r, ReplyToProperty),
+                    GetString(r, CorrIdProperty),
+                    r[TimeProperty].ToUniversalTime(),
+                    GetGuid(r, SagaIdProperty),
+                    GetString(r, DataProperty),
+                    collection,
+                    (ObjectId)r[IdProperty]);
+
+                dueTimeouts.Add(timeout);
             }
 
             return new DueTimeoutsResult(dueTimeouts);
