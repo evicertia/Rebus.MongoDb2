@@ -1,4 +1,5 @@
-﻿using Rebus.Configuration;
+﻿using System;
+using Rebus.Configuration;
 
 namespace Rebus.MongoDb2
 {
@@ -27,11 +28,12 @@ namespace Rebus.MongoDb2
 
         /// <summary>
         /// Configures Rebus to store timeouts internally in the given collection in MongoDB, in the database specified by the connection string
+        /// lockTimeoutOffset and maxDueTimeoutsRetrieved
         /// </summary>
         public static void StoreInMongoDb(this RebusTimeoutsConfigurer configurer, string connectionString,
-                                          string collectionName)
+                                          string collectionName, TimeSpan? lockTimeoutsOffset = null, int? maxDueTimeoutsRetrieved = null)
         {
-            configurer.Use(new MongoDbTimeoutStorage(connectionString, collectionName));
+            configurer.Use(new MongoDbTimeoutStorage(connectionString, collectionName, lockTimeoutsOffset, maxDueTimeoutsRetrieved));
         }
 
         /// <summary>

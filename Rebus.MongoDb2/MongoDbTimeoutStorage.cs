@@ -20,19 +20,43 @@ namespace Rebus.MongoDb2
         const string SagaIdProperty = "saga_id";
         const string DataProperty = "data";
         const string IdProperty = "_id";
+        const string DueLockProperty = "due_lock";
+        const int RebusDueTimeoutSchedulerTimerIntervalInMs = 300;
         readonly IMongoCollection<BsonDocument> collection;
+        readonly TimeSpan _lockTimeoutsOffset = new TimeSpan(0,0,2);
+        readonly int _maxDueTimeoutsRetrieved = 4;
 
         /// <summary>
         /// Constructs the timeout storage, connecting to the Mongo database pointed to by the given connection string,
-        /// storing the timeouts in the given collection
+        /// storing the timeouts in the given collection with specified lockTimeoutsOffset
         /// </summary>
-        public MongoDbTimeoutStorage(string connectionString, string collectionName)
+        public MongoDbTimeoutStorage(string connectionString, string collectionName, TimeSpan? lockTimeoutsOffset = null, int? maxDueTimeoutsRetrieved = null)
         {
+            if (lockTimeoutsOffset == null)
+                lockTimeoutsOffset = _lockTimeoutsOffset;
+
+            if (lockTimeoutsOffset.Value.TotalMilliseconds <= RebusDueTimeoutSchedulerTimerIntervalInMs)
+            {
+                var message=$"{nameof(lockTimeoutsOffset)} must be greater than {RebusDueTimeoutSchedulerTimerIntervalInMs} ms in order to {nameof(MongoDbTimeoutStorage)} locking " +
+                            $" feature work properly (see Rebus.Bus.DueTimeoutScheduler internal timer interval = { RebusDueTimeoutSchedulerTimerIntervalInMs }) ms";
+                throw new ArgumentException(message);
+            }
+
+            _lockTimeoutsOffset = lockTimeoutsOffset.Value;
+
+            if (maxDueTimeoutsRetrieved == null)
+                maxDueTimeoutsRetrieved = _maxDueTimeoutsRetrieved;
+
+            if (maxDueTimeoutsRetrieved <= 0)
+                throw new ArgumentException("maxRetrievedTimeouts must be greater than 0");
+
+           _maxDueTimeoutsRetrieved = maxDueTimeoutsRetrieved.Value;
+
             var database = MongoHelper.GetDatabase(connectionString);
             collection = database.GetCollection<BsonDocument>(collectionName);
 
 			var indexBuilder = Builders<BsonDocument>.IndexKeys;
-			var indexModel = new CreateIndexModel<BsonDocument>(indexBuilder.Ascending(TimeProperty), new CreateIndexOptions() { Background = true, Unique = false });
+			var indexModel = new CreateIndexModel<BsonDocument>(indexBuilder.Ascending(TimeProperty).Ascending(DueLockProperty), new CreateIndexOptions() { Background = true, Unique = false });
 			collection.Indexes.CreateOne(indexModel);
         }
 
@@ -46,7 +70,8 @@ namespace Rebus.MongoDb2
                 .Add(SagaIdProperty, newTimeout.SagaId)
                 .Add(TimeProperty, newTimeout.TimeToReturn)
                 .Add(DataProperty, (BsonValue) newTimeout.CustomData ?? BsonNull.Value)
-                .Add(ReplyToProperty, (BsonValue) newTimeout.ReplyTo ?? BsonNull.Value);
+                .Add(ReplyToProperty, (BsonValue)newTimeout.ReplyTo ?? BsonNull.Value)
+                .Add(DueLockProperty, BsonNull.Value);
 
             collection.InsertOne(doc);
         }
@@ -57,18 +82,36 @@ namespace Rebus.MongoDb2
         /// </summary>
         public DueTimeoutsResult GetDueTimeouts()
         {
-            var result = collection.Find(Builders<BsonDocument>.Filter.Lte(TimeProperty, RebusTimeMachine.Now()))
-                                   .Sort(Builders<BsonDocument>.Sort.Ascending(TimeProperty));
+			var dueTimeouts = new List<DueTimeout>();
+			var currentDate = RebusTimeMachine.Now();
+            var dueTimeoutFilter = Builders<BsonDocument>.Filter.Lte(TimeProperty,currentDate);
+            var unlockedTimeoutFilter = Builders<BsonDocument>.Filter.Eq(DueLockProperty, BsonNull.Value) |
+                                Builders<BsonDocument>.Filter.Lt(DueLockProperty, currentDate);
 
-			return new DueTimeoutsResult(result.Project(r =>
-					new DueMongoTimeout(GetString(r, ReplyToProperty),
-						GetString(r, CorrIdProperty),
-						r[TimeProperty].ToUniversalTime(),
-						GetGuid(r, SagaIdProperty),
-						GetString(r, DataProperty),
-						collection,
-						(ObjectId) r[IdProperty])
-					).ToList());
+            var timeoutReadyToBeFiredFilter = dueTimeoutFilter & unlockedTimeoutFilter;
+
+            var dueLockShifted = currentDate + _lockTimeoutsOffset;
+
+            for (var i = 0; i < _maxDueTimeoutsRetrieved; i++)
+            {
+                var findOneAndUpdateOptions = new FindOneAndUpdateOptions<BsonDocument> { Sort = Builders<BsonDocument>.Sort.Ascending(TimeProperty).Ascending(DueLockProperty) };
+                var r = collection.FindOneAndUpdate(timeoutReadyToBeFiredFilter, Builders<BsonDocument>.Update.Set(DueLockProperty, dueLockShifted), findOneAndUpdateOptions);
+
+                if (r == null)
+                    break;
+
+                var timeout = new DueMongoTimeout(GetString(r, ReplyToProperty),
+                    GetString(r, CorrIdProperty),
+                    r[TimeProperty].ToUniversalTime(),
+                    GetGuid(r, SagaIdProperty),
+                    GetString(r, DataProperty),
+                    collection,
+                    (ObjectId)r[IdProperty]);
+
+                dueTimeouts.Add(timeout);
+            }
+
+            return new DueTimeoutsResult(dueTimeouts);
         }
 
         static Guid GetGuid(BsonDocument doc, string propertyName)
