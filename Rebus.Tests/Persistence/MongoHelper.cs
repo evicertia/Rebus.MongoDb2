@@ -9,7 +9,7 @@ namespace Rebus.Tests.Persistence
 		{
 			var url = new MongoUrl(connectionString);
 			var settings = MongoClientSettings.FromConnectionString(connectionString);
-			settings.SdamLogFilename = "/tmp/mongo.log";
+			//settings.SdamLogFilename = "/tmp/mongo.log";
 
 			return new MongoClient(settings)
 				.GetDatabase(url.DatabaseName);
