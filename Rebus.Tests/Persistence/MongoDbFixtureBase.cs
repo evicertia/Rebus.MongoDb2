@@ -8,7 +8,6 @@ namespace Rebus.Tests.Persistence
     public abstract class MongoDbFixtureBase
     {
         IMongoDatabase db;
-		IMongoClient client;
 
         static MongoDbFixtureBase()
         {

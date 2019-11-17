@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Timers;
+using System.Linq;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Driver;
 using MongoDB.Bson;
-using System.Linq;
 using Ponder;
 using Rebus.Logging;
 
@@ -71,6 +71,8 @@ namespace Rebus.MongoDb2
         readonly Dictionary<Type, string> collectionNames = new Dictionary<Type, string>();
         readonly IMongoDatabase database;
         readonly Timer indexRecreationTimer = new Timer();
+        double indexRecreationInterval = TimeSpan.FromMinutes(10).TotalMilliseconds;
+        double indexRecreationIntervalVariation = TimeSpan.FromMinutes(5).TotalMilliseconds;
 
         /// <summary>
         /// We keep track whether the index has been declared recently in order to minimize the risk that someone
@@ -91,10 +93,7 @@ namespace Rebus.MongoDb2
             log.Info("Connecting to Mongo");
             database = MongoHelper.GetDatabase(connectionString);
 
-            // flick the bool once in a while
-            indexRecreationTimer.Elapsed += delegate { indexEnsuredRecently = false; };
-            indexRecreationTimer.Interval = TimeSpan.FromMinutes(1).TotalMilliseconds;
-            indexRecreationTimer.Start();
+            ReStartIndexCreationTimer();
         }
 
         /// <summary>
@@ -136,21 +135,81 @@ namespace Rebus.MongoDb2
         }
 
         /// <summary>
+        /// Set the intervat at which saga collection's indexes should be redeclared.
+        /// </summary>
+        /// <param name="interval">The interval.</param>
+        /// <param name="variation">A variation to take into account in order to avoid herd effect with multiple process.</param>
+        /// <returns></returns>
+        public MongoDbSagaPersister SetIndexDeclarationInterval(TimeSpan interval, TimeSpan variation = default(TimeSpan))
+        {
+            if (variation > interval)
+            {
+                var message = string.Format(
+                    "Variation to apply to index re-creation time {0} cannot be more than the interval itself: {1}.",
+                    variation, interval
+                );
+
+                throw new InvalidOperationException(message);
+            }
+
+            log.Info("Saga indexes will be re-declared on {0} intervals, with {1} variation.", interval, variation);
+
+            indexRecreationInterval = interval.TotalMilliseconds;
+            indexRecreationIntervalVariation = variation.TotalMilliseconds;
+
+            ReStartIndexCreationTimer();
+
+            return this;
+        }
+
+        private void ReStartIndexCreationTimer()
+        {
+            if (indexRecreationTimer.Enabled)
+            {
+                indexRecreationTimer.Stop();
+            }
+
+            // flick the bool once in a while
+            var min = indexRecreationInterval - indexRecreationIntervalVariation;
+            var max = indexRecreationInterval + indexRecreationIntervalVariation;
+            var interval = ThreadSafeRandom.Next(min, max);
+            indexRecreationTimer.Elapsed += delegate { indexEnsuredRecently = false; };
+            indexRecreationTimer.Interval = interval;
+            indexRecreationTimer.Start();
+        }
+
+        private IMongoCollection<ISagaData> GetCollectionFor(ISagaData sagaData)
+        {
+            var name = GetCollectionName(sagaData.GetType());
+            var collection = database.GetCollection<ISagaData>(name);
+
+            // XXX: Ensure wc=1, even if connectionString said otherwise.
+            return collection.WithWriteConcern(WriteConcern.Acknowledged);
+        }
+
+        /// <summary>
         /// Inserts the given saga data, once in a while also ensuring that synchronous indexes with unique
         /// constraints are created for the given saga data property paths.
         /// </summary>
         public void Insert(ISagaData sagaData, string[] sagaDataPropertyPathsToIndex)
         {
-            var collection = database.GetCollection<ISagaData>(GetCollectionName(sagaData.GetType()));
+            var collection = GetCollectionFor(sagaData);
 
             EnsureIndexHasBeenCreated(sagaDataPropertyPathsToIndex, collection);
 
-            sagaData.Revision++;
             try
             {
+                sagaData.Revision++;
                 collection.InsertOne(sagaData);
             }
             catch (MongoWriteException ex)
+            {
+                // in case of race conditions, we get a duplicate key error because the upsert
+                // cannot proceed to insert a document with the same _id as an existing document
+                // ... therefore, we map the MongoSafeModeException to our own OptimisticLockingException
+                throw new OptimisticLockingException(sagaData, ex);
+            }
+            catch (MongoWriteConcernException ex)
             {
                 // in case of race conditions, we get a duplicate key error because the upsert
                 // cannot proceed to insert a document with the same _id as an existing document
@@ -165,29 +224,43 @@ namespace Rebus.MongoDb2
         /// </summary>
         public void Update(ISagaData sagaData, string[] sagaDataPropertyPathsToIndex)
         {
-            var collection = database.GetCollection<ISagaData>(GetCollectionName(sagaData.GetType()));
+            var collection = GetCollectionFor(sagaData);
+            var revisionElementName = GetRevisionElementName(sagaData);
+            var criteria = Builders<ISagaData>.Filter.And(
+                Builders<ISagaData>.Filter.Eq(IdElementName, sagaData.Id),
+				Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision)
+            );
 
             EnsureIndexHasBeenCreated(sagaDataPropertyPathsToIndex, collection);
 
-            var revisionElementName = GetRevisionElementName(sagaData);
-
-            var criteria = Builders<ISagaData>.Filter.And(Builders<ISagaData>.Filter.Eq(IdElementName, sagaData.Id),
-				Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision));
-
-            sagaData.Revision++;
-
             try
             {
+                sagaData.Revision++;
+
                 var replaceResult = collection.ReplaceOne(criteria, sagaData);
 
-				EnsureResultIsGood(replaceResult,
-                       "update saga data of type {0} with _id {1} and _rev {2}", 1, sagaData,
-                       sagaData.GetType(),
-                       sagaData.Id,
-                       sagaData.Revision);
+				if (replaceResult.ModifiedCount != 1)
+				{
+					var detail = string.Format(
+						"update saga data of type {0} with _id {1} and _rev {2}",
+						sagaData.GetType(), sagaData.Id, sagaData.Revision
+					);
+					var message = string.Format(
+						"Tried to {0}, but documents affected {1} != {2}.",
+						detail, replaceResult.ModifiedCount, 1
+					);
 
+					throw new OptimisticLockingException(sagaData, new MongoException(message));
+				}
             }
-            catch (MongoWriteException ex)
+			catch (MongoWriteException ex)
+			{
+				// in case of race conditions, we get a duplicate key error because the upsert
+				// cannot proceed to insert a document with the same _id as an existing document
+				// ... therefore, we map the MongoSafeModeException to our own OptimisticLockingException
+				throw new OptimisticLockingException(sagaData, ex);
+			}
+			catch (MongoWriteConcernException ex)
             {
                 // in case of race conditions, we get a duplicate key error because the upsert
                 // cannot proceed to insert a document with the same _id as an existing document
@@ -202,22 +275,37 @@ namespace Rebus.MongoDb2
         /// </summary>
         public void Delete(ISagaData sagaData)
         {
-            var collection = database.GetCollection<ISagaData>(GetCollectionName(sagaData.GetType()));
-
+            var collection = GetCollectionFor(sagaData);
             var revisionElementName = GetRevisionElementName(sagaData);
-
-            var query = Builders<ISagaData>.Filter.And(Builders<ISagaData>.Filter.Eq(IdElementName, sagaData.Id),
-                                  Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision));
+            var query = Builders<ISagaData>.Filter.And(
+                Builders<ISagaData>.Filter.Eq(IdElementName, sagaData.Id),
+                Builders<ISagaData>.Filter.Eq(revisionElementName, sagaData.Revision)
+            );
 
             try
             {
                 var deleteResult = collection.DeleteOne(query);
 
-				EnsureResultIsGood(deleteResult,
-                                   "delete saga data of type {0} with _id {1} and _rev {2}", 1, sagaData,
-                                   sagaData.GetType(),
-                                   sagaData.Id,
-                                   sagaData.Revision);
+				if (deleteResult.DeletedCount != 1)
+				{
+					var detail = string.Format(
+						"delete saga data of type {0} with _id {1} and _rev {2}",
+						sagaData.GetType(), sagaData.Id, sagaData.Revision
+					);
+					var message = string.Format(
+						"Tried to {0}, but documents affected {1} != {2}.",
+						detail, deleteResult.DeletedCount, 1
+					);
+
+					throw new OptimisticLockingException(sagaData, new MongoException(message));
+				}
+            }
+            catch (MongoWriteException ex)
+            {
+                // in case of race conditions, we get a duplicate key error because the upsert
+                // cannot proceed to insert a document with the same _id as an existing document
+                // ... therefore, we map the MongoSafeModeException to our own OptimisticLockingException
+                throw new OptimisticLockingException(sagaData, ex);
             }
             catch (MongoWriteConcernException ex)
             {
@@ -302,22 +390,19 @@ which will make the persister use the type of the saga to come up with collectio
 
                         log.Info("Re-declaring indexes with unique constraints for the following paths: {0}", string.Join(", ", propertyPathsToIndex));
 
-                        //collection.ResetIndexCache();
+                        var indexes = collection.Indexes.List().ToList().Select(x => new MongoIndex(x)).ToArray();
 
-                        //                        var indexes = collection.GetIndexes();
-
-                        foreach (var propertyToIndex in propertyPathsToIndex.Except(new[] { "Id" }))
+						foreach (var propertyToIndex in propertyPathsToIndex.Except(new[] { "Id" }))
                         {
 							var indexBuilder = Builders<ISagaData>.IndexKeys;
-							var indexModel = new CreateIndexModel<ISagaData>(indexBuilder.Ascending(propertyToIndex), new CreateIndexOptions() { Background = false, Unique = true });
-                            //if (IndexAlreadyExists(indexes, propertyToIndex))
-                            //{
-                            //    AssertIndexIsCorrect(indexes, propertyToIndex);
-                            //}
+                            var indexOptions = new CreateIndexOptions() { Background = false, Unique = true };
+                            var indexModel = new CreateIndexModel<ISagaData>(indexBuilder.Ascending(propertyToIndex), indexOptions);
+                            if (IndexAlreadyExists(indexes, propertyToIndex))
+                            {
+                                AssertIndexIsCorrect(indexes, propertyToIndex);
+                            }
                             collection.Indexes.CreateOne(indexModel);
                         }
-
-                        //collection.ReIndex();
 
                         indexEnsuredRecently = true;
                     }
@@ -325,8 +410,7 @@ which will make the persister use the type of the saga to come up with collectio
             }
         }
 
-#if false
-		void AssertIndexIsCorrect<T>(IMongoIndexManager<T> indexes, string propertyToIndex)
+		void AssertIndexIsCorrect(IEnumerable<MongoIndex> indexes, string propertyToIndex)
 		{
 			var indexInfo = indexes.Single(i => IsIndexForProperty(propertyToIndex, i));
 
@@ -340,7 +424,6 @@ which will make the persister use the type of the saga to come up with collectio
 				throw new InvalidOperationException(string.Format("The index for {0} aready exists, but it wasn't SYNCHRONOUS.", propertyToIndex));
 			}
 		}
-#endif
 
 		/// <summary>
 		/// Asks the BSON serializer what is the Mongo element name for the revision
@@ -360,20 +443,18 @@ which will make the persister use the type of the saga to come up with collectio
             return revisionElementName;
         }
 
-#if false
-		bool IndexAlreadyExists(IEnumerable<IndexInfo> indexes, string propertyToIndex)
+		bool IndexAlreadyExists(IEnumerable<MongoIndex> indexes, string propertyToIndex)
         {
             return indexes
                 .Any(indexInfo => IsIndexForProperty(propertyToIndex, indexInfo));
         }
 
-        static bool IsIndexForProperty(string propertyToIndex, IndexInfo indexInfo)
+        static bool IsIndexForProperty(string propertyToIndex, MongoIndex indexInfo)
         {
             var indexKeys = indexInfo.Key.ToDictionary();
 
             return indexKeys.Count == 1 && indexKeys.ContainsKey(propertyToIndex);
         }
-#endif
 
         string MapSagaDataPropertyPath(string sagaDataPropertyPath, Type sagaDataType)
         {
@@ -384,29 +465,5 @@ which will make the persister use the type of the saga to come up with collectio
 
             return NamingConvention.GetElementName(propertyInfo);
         }
-
-		void EnsureResultIsGood(ReplaceOneResult replaceResult, string message, int expectedNumberOfAffectedDocuments, ISagaData sagaData, params object[] objs)
-        {
-            if (replaceResult.ModifiedCount != expectedNumberOfAffectedDocuments)
-            {
-                var exceptionMessage = string.Format("Tried to {0}, but documents affected != {1}.",
-                                                     string.Format(message, objs),
-                                                     expectedNumberOfAffectedDocuments);
-
-                throw new OptimisticLockingException(sagaData, new MongoException(exceptionMessage));
-            }
-        }
-
-		void EnsureResultIsGood(DeleteResult deleteResult, string message, int expectedNumberOfAffectedDocuments, ISagaData sagaData, params object[] objs)
-		{
-			if (deleteResult.DeletedCount != expectedNumberOfAffectedDocuments)
-			{
-				var exceptionMessage = string.Format("Tried to {0}, but documents affected != {1}.",
-													 string.Format(message, objs),
-													 expectedNumberOfAffectedDocuments);
-
-				throw new OptimisticLockingException(sagaData, new MongoException(exceptionMessage));
-			}
-		}
 	}
 }

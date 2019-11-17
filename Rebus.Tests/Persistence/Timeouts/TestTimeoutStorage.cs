@@ -43,7 +43,7 @@ namespace Rebus.Tests.Persistence.Timeouts
                 dueTimeoutsFromFirstCall = dueTimeoutsResult.DueTimeouts.ToList();
             }
 
-            TimeMachine.FixTo(actualTimeWhenIWroteThis.AddSeconds(30));
+            TimeMachine.FixTo(actualTimeWhenIWroteThis.AddSeconds(35));
 
             // this is where we'd have marked the due timeout as processed - instead, we pretend that didn't happen
             // (perhaps because the timeout service was interrupted) ...

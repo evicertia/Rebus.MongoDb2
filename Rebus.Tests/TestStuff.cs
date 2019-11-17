@@ -42,7 +42,7 @@ namespace Rebus.Tests
                 throw new NotImplementedException();
             }
 
-            public event Action Disposed;
+            public event Action Disposed = delegate { };
 
             public object CurrentMessage
             {
