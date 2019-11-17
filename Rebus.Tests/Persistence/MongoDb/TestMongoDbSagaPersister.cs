@@ -85,5 +85,15 @@ namespace Rebus.Tests.Persistence.MongoDb
             GetCollectionNames().ShouldContain("sagas_FirstSagaData");
             GetCollectionNames().ShouldContain("second_saga_datas");
         }
+
+        [Test]
+        public void CanSetIndexRecreationInterval()
+        {
+            // Index re-creation interval is set to a default at .cotr
+            // but setting a new value, forces a timer re-setup.
+
+            persister.SetIndexDeclarationInterval(TimeSpan.FromMinutes(1));
+            persister.SetIndexDeclarationInterval(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(1));
+        }
     }
 }

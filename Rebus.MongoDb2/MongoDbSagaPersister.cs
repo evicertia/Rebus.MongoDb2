@@ -71,6 +71,8 @@ namespace Rebus.MongoDb2
         readonly Dictionary<Type, string> collectionNames = new Dictionary<Type, string>();
         readonly IMongoDatabase database;
         readonly Timer indexRecreationTimer = new Timer();
+        double indexRecreationInterval = TimeSpan.FromMinutes(10).TotalMilliseconds;
+        double indexRecreationIntervalVariation = TimeSpan.FromMinutes(5).TotalMilliseconds;
 
         /// <summary>
         /// We keep track whether the index has been declared recently in order to minimize the risk that someone
@@ -91,10 +93,7 @@ namespace Rebus.MongoDb2
             log.Info("Connecting to Mongo");
             database = MongoHelper.GetDatabase(connectionString);
 
-            // flick the bool once in a while
-            indexRecreationTimer.Elapsed += delegate { indexEnsuredRecently = false; };
-            indexRecreationTimer.Interval = TimeSpan.FromMinutes(5).TotalMilliseconds; //< TODO: configurable..
-            indexRecreationTimer.Start();
+            ReStartIndexCreationTimer();
         }
 
         /// <summary>
@@ -133,6 +132,50 @@ namespace Rebus.MongoDb2
             collectionNames.Add(sagaDataType, collectionName);
 
             return this;
+        }
+
+        /// <summary>
+        /// Set the intervat at which saga collection's indexes should be redeclared.
+        /// </summary>
+        /// <param name="interval">The interval.</param>
+        /// <param name="variation">A variation to take into account in order to avoid herd effect with multiple process.</param>
+        /// <returns></returns>
+        public MongoDbSagaPersister SetIndexDeclarationInterval(TimeSpan interval, TimeSpan variation = default(TimeSpan))
+        {
+            if (variation > interval)
+            {
+                var message = string.Format(
+                    "Variation to apply to index re-creation time {0} cannot be more than the interval itself: {1}.",
+                    variation, interval
+                );
+
+                throw new InvalidOperationException(message);
+            }
+
+            log.Info("Saga indexes will be re-declared on {0} intervals, with {1} variation.", interval, variation);
+
+            indexRecreationInterval = interval.TotalMilliseconds;
+            indexRecreationIntervalVariation = variation.TotalMilliseconds;
+
+            ReStartIndexCreationTimer();
+
+            return this;
+        }
+
+        private void ReStartIndexCreationTimer()
+        {
+            if (indexRecreationTimer.Enabled)
+            {
+                indexRecreationTimer.Stop();
+            }
+
+            // flick the bool once in a while
+            var min = indexRecreationInterval - indexRecreationIntervalVariation;
+            var max = indexRecreationInterval + indexRecreationIntervalVariation;
+            var interval = ThreadSafeRandom.Next(min, max);
+            indexRecreationTimer.Elapsed += delegate { indexEnsuredRecently = false; };
+            indexRecreationTimer.Interval = interval;
+            indexRecreationTimer.Start();
         }
 
         private IMongoCollection<ISagaData> GetCollectionFor(ISagaData sagaData)

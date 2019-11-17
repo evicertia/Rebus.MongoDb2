@@ -51,18 +51,32 @@ namespace Rebus.MongoDb2
             /// <summary>
             /// Configures the saga persister to store saga data of the given type in the specified collection
             /// </summary>
-            public MongoDbSagaPersister SetCollectionName<TSagaData>(string collectionName) where TSagaData : ISagaData
+            public MongoDbSagaPersisterConfigurationBuilder SetCollectionName<TSagaData>(string collectionName) where TSagaData : ISagaData
             {
-                return mongoDbSagaPersister.SetCollectionName<TSagaData>(collectionName);
+                mongoDbSagaPersister.SetCollectionName<TSagaData>(collectionName);
+                return this;
             }
 
             /// <summary>
             /// Turns on automatic saga collection name generation - will kick in for all saga data types that have
             /// not had a collection name explicitly configured
             /// </summary>
-            public MongoDbSagaPersister AllowAutomaticSagaCollectionNames()
+            public MongoDbSagaPersisterConfigurationBuilder AllowAutomaticSagaCollectionNames()
             {
-                return mongoDbSagaPersister.AllowAutomaticSagaCollectionNames();
+                mongoDbSagaPersister.AllowAutomaticSagaCollectionNames();
+                return this;
+            }
+
+            /// <summary>
+            /// Set the intervat at which saga collection's indexes should be redeclared.
+            /// </summary>
+            /// <param name="interval">The interval.</param>
+            /// <param name="variation">A variation to take into account in order to avoid herd effect with multiple process.</param>
+            /// <returns></returns>
+            public MongoDbSagaPersisterConfigurationBuilder SetIndexDeclarationInterval(TimeSpan interval, TimeSpan variation = default(TimeSpan))
+            {
+                mongoDbSagaPersister.SetIndexDeclarationInterval(interval, variation);
+                return this;
             }
         }
     }
