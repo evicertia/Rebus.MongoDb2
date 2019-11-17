@@ -1,9 +1,10 @@
 ﻿using System;
+
 using MongoDB.Driver;
 
 namespace Rebus.MongoDb2
 {
-    class MongoHelper
+    internal static class MongoHelper
     {
         public static IMongoDatabase GetDatabase(string connectionString)
         {
@@ -20,5 +21,5 @@ namespace Rebus.MongoDb2
 
             return client.GetDatabase(databaseName);
         }
-    }
+	}
 }

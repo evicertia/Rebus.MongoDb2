@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using System;
+using MongoDB.Driver;
 
 namespace Rebus.Tests.Persistence
 {
@@ -6,10 +7,12 @@ namespace Rebus.Tests.Persistence
 	{
 		public static IMongoDatabase GetDatabase(string connectionString)
 		{
-			var mongoUrl = new MongoUrl(connectionString);
+			var url = new MongoUrl(connectionString);
+			var settings = MongoClientSettings.FromConnectionString(connectionString);
+			settings.SdamLogFilename = "/tmp/mongo.log";
 
-			return new MongoClient(mongoUrl)
-				.GetDatabase(mongoUrl.DatabaseName);
+			return new MongoClient(settings)
+				.GetDatabase(url.DatabaseName);
 		}
 	}
 
@@ -17,8 +20,16 @@ namespace Rebus.Tests.Persistence
 	{
 		public static void DropDatabase(this IMongoDatabase db, string connectionString)
 		{
-			var databaseName = new MongoUrl(connectionString).DatabaseName;
-			db.Client.DropDatabase(databaseName);
+			try
+			{
+				var databaseName = new MongoUrl(connectionString).DatabaseName;
+				db.Client.DropDatabase(databaseName);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.ToString());
+				throw;
+			}
 		}
 	}
 }
